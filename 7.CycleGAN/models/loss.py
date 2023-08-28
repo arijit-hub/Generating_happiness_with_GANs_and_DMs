@@ -1,0 +1,253 @@
+"""Implements the necessary loss functions for
+the CycleGAN model."""
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+class CycleGANLoss:
+    """Container for all the losses responsible for
+    training the CycleGAN model.
+    """
+
+    def __init__(
+        self,
+        generator_adversarial_loss: nn.Module = nn.MSELoss(),
+        discriminator_adversarial_loss: nn.Module = nn.MSELoss(),
+        cycle_loss: nn.Module = nn.L1Loss(),
+        identity_loss: nn.Module = nn.L1Loss(),
+    ):
+        """Constructor
+
+        Parameters
+        ----------
+        generator_adversarial_loss : nn.Module
+            The loss function to use for the generator.
+            [Default : nn.MSELoss()]
+
+        discriminator_adversarial_loss : nn.Module
+            The loss function to use for the discriminator.
+            [Default : nn.MSELoss()]
+
+        cycle_loss : nn.Module
+            The cycle consistency loss.
+            [Default : nn.L1Loss()]
+
+        identity_loss : nn.Module
+            The identity loss to keep the color composition
+            constant of the source when generator produces
+            a target domain image.
+            [Default : nn.L1Loss()]
+        """
+
+        ## Setting the loss functions ##
+
+        self.generator_adversarial_loss = generator_adversarial_loss
+        self.discriminator_adversarial_loss = discriminator_adversarial_loss
+        self.cycle_loss = cycle_loss
+        self.identity_loss = identity_loss
+
+    def calculate_single_generator_adversarial_loss(
+        self,
+        generated_end_domain_imgs: torch.tensor,
+        end_domain_discriminator: nn.Module,
+        factor: float = 1.0,
+    ):
+        """Calculates the adversarial loss for a single generator.
+
+        Parameters
+        ----------
+        generated_end_domain_imgs : torch.tensor
+            A batch of "fake" images generated via a
+            start_2_end_domain_generator.
+
+        end_domain_discriminator : nn.Module
+            The discriminator to detect real and fake images
+            from the end domai
+
+        factor : float
+            The factor to multiply the loss value.
+            [Default : 1.0]
+
+        Returns
+        -------
+        torch.tensor
+            The generator loss value.
+        """
+
+        ## Getting predictions from the discriminator ##
+        predicted_labels = end_domain_discriminator(generated_end_domain_imgs)
+
+        ## Setting labels to 1, since we want to push the generated images ...#
+        ## to be real. ##
+        actual_labels = torch.ones_like(predicted_labels)
+
+        return (
+            self.generator_adversarial_loss(predicted_labels, actual_labels)
+        ) * factor
+
+    def calculate_cycle_consistency_loss(
+        self,
+        start_domain_imgs: torch.tensor,
+        end_domain_imgs: torch.tensor,
+        recon_start_domain_imgs: torch.tensor,
+        recon_end_domain_imgs: torch.tensor,
+        factor: tuple = (1.0, 1.0),
+    ):
+        """Calculates the cycle consistency loss,
+        given the start domain images, end domain images
+        and the two reconstructed images.
+
+        Parameters
+        ----------
+        start_domain_imgs : torch.tensor
+            The original images of the start domain.
+
+        end_domain_imgs : torch.tensor
+            The original images of the end domain.
+
+        recon_start_domain_imgs : torch.tensor
+            The reconstructed images of the start domain.
+
+        recon_end_domain_imgs : torch.tensor
+            The reconstructed images of the end domai
+
+        factor : tuple
+            The factor to multiply the sum of the forward
+            and reverse cycle consistency losses.
+            [Default : (1.0,1.0)]
+
+        Returns
+        -------
+        torch.tensor
+            The cyclic loss value.
+        """
+
+        forward_cycle_loss = factor[0] * self.cycle_loss(
+            recon_start_domain_imgs,
+            start_domain_imgs,
+        )
+
+        reverse_cycle_loss = factor[1] * self.cycle_loss(
+            recon_end_domain_imgs,
+            end_domain_imgs,
+        )
+
+        return forward_cycle_loss + reverse_cycle_loss
+
+    def calculate_identity_loss(
+        self,
+        start_2_end_domain_generator: nn.Module,
+        end_2_start_domain_generator: nn.Module,
+        start_domain_imgs: torch.tensor,
+        end_domain_imgs: torch.tensor,
+        factor: tuple = (1.0, 1.0),
+    ):
+        """Implementation of the identity loss
+        to preserve color composition.
+
+        Parameters
+        ----------
+        start_2_end_domain_generator : nn.Module
+            Generator Model for generating images of end
+            domain from start domain.
+
+        end_2_start_domain_generator : nn.Module
+            Generator model for generating images of start
+            domain from end domain.
+
+        starting_domain_imgs : torch.tensor
+            A batch of start images from which "fake"
+            end domain images are generated by the generator.
+
+        ending_domain_imgs : torch.tensor
+            A batch of real end domain image
+
+        factor : tuple
+            The factor to multiply the sum of the identity
+            losses.
+            [Default : (1.0,1.0)]
+
+        Returns
+        -------
+        torch.tensor
+            The identity loss value.
+        """
+
+        identity_loss_end_domain = factor[0] * self.identity_loss(
+            start_2_end_domain_generator(end_domain_imgs), end_domain_imgs
+        )
+        identity_loss_start_domain = factor[1] * self.identity_loss(
+            end_2_start_domain_generator(start_domain_imgs), start_domain_imgs
+        )
+
+        return identity_loss_end_domain + identity_loss_start_domain
+
+    def calculate_single_discriminator_adversarial_loss(
+        self,
+        gen_ending_domain_history,
+        generated_ending_domain_imgs: torch.tensor,
+        ending_domain_imgs: torch.tensor,
+        end_domain_discriminator: nn.Module,
+        factor: float = 1.0,
+    ):
+        """Calculates the discriminator loss.
+
+        Parameters
+        ----------
+        gen_ending_domain_history
+            The history container of generated images of the end
+            domain.
+
+        generated_ending_domain_imgs : torch.tensor
+            A batch of "fake" end domain images are generated
+            by the generator.
+
+        ending_domain_imgs : torch.tensor
+            A batch of real end domain images.
+
+        end_domain_discriminator : nn.Module
+            The discriminator to detect real and fake images
+            from the end domain.
+
+        factor : float
+            The factor to multiply the sum of the real images
+            loss and the fake images loss.
+            [Default : 1.0]
+
+        Returns
+        -------
+        torch.tensor
+            The discriminator loss value.
+        """
+
+        ## Generated images ##
+        generated_ending_domain_imgs = generated_ending_domain_imgs.detach()
+
+        # updated_gen_ending_domain_imgs = gen_ending_domain_history.fetch_and_update(
+        #     generated_ending_domain_imgs
+        # )
+
+        updated_gen_ending_domain_imgs = gen_ending_domain_history.query(
+            generated_ending_domain_imgs
+        )
+
+        ## Checking with the discriminator ##
+        predicted_fake_labels = end_domain_discriminator(updated_gen_ending_domain_imgs)
+        actual_fake_labels = torch.zeros_like(predicted_fake_labels)
+
+        predicted_real_labels = end_domain_discriminator(ending_domain_imgs)
+        actual_real_labels = torch.ones_like(predicted_real_labels)
+
+        ## Getting the fake images loss ##
+        fake_loss = self.discriminator_adversarial_loss(
+            predicted_fake_labels, actual_fake_labels
+        )
+
+        ## Getting the real images loss ##
+        real_loss = self.discriminator_adversarial_loss(
+            predicted_real_labels, actual_real_labels
+        )
+
+        return factor * (fake_loss + real_loss)
