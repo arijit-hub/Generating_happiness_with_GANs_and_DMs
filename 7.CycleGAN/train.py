@@ -1,5 +1,5 @@
 import torch
-from data.data import EnhanceDataModule
+from data.data import Horse2ZebraDataModule, EnhanceDataModule
 from models.model import CycleGAN
 from models.networks import Generator, Discriminator, UNet, NestedUNet
 # from utils.image_history import ImageHistory
@@ -37,46 +37,50 @@ val_transform = transforms.Compose(
 )
 
 ## Setting the dataloading ##
+# horse_data = Horse2ZebraDataModule(
+#     root_path = 'assets/horse2zebra',
+#     batch_size=1
+# )
 enhance_data = EnhanceDataModule(
-    csv_path = 'assets/images.csv',
-    root_img_path='assets',
+    csv_path = '/home/atuin/b143dc/b143dc16/us_enhance/cyclegan_baseline/assets/images.csv',
+    root_img_path='/home/atuin/b143dc/b143dc16/us_enhance/cyclegan_baseline/assets',
     img_type="all",
     batch_size=1
 )
 
 ## Setting the models ##
 ## 1. Source -> Target domain generator ##
-source_2_target_generator = Generator(
-    depth=3,
-    num_res_blocks=9,
-    in_channels=1,
-    out_channels=1,
-    initial_num_filters=64,
-    norm="batch",
-    act="relu",
-)
-# source_2_target_generator = NestedUNet(
-#     input_channels=3,
-#     output_channels=3
+# source_2_target_generator = Generator(
+#     depth=3,
+#     num_res_blocks=9,
+#     in_channels=1,
+#     out_channels=1,
+#     initial_num_filters=64,
+#     norm="batch",
+#     act="relu",
 # )
+source_2_target_generator = NestedUNet(
+    input_channels=1,
+    output_channels=1
+)
 
 source_2_target_generator.apply(init_weights)
 
 ## 2. Target -> Source domain generator ##
-target_2_source_generator = Generator(
-    depth=3,
-    num_res_blocks=9,
-    in_channels=1,
-    out_channels=1,
-    initial_num_filters=64,
-    norm="batch",
-    act="relu",
-)
-
-# target_2_source_generator = NestedUNet(
-#     input_channels=3,
-#     output_channels=3
+# target_2_source_generator = Generator(
+#     depth=3,
+#     num_res_blocks=9,
+#     in_channels=1,
+#     out_channels=1,
+#     initial_num_filters=64,
+#     norm="batch",
+#     act="relu",
 # )
+
+target_2_source_generator = NestedUNet(
+    input_channels=1,
+    output_channels=1
+)
 
 target_2_source_generator.apply(init_weights)
 
@@ -84,7 +88,7 @@ target_2_source_generator.apply(init_weights)
 source_discriminator = Discriminator(
     in_channels=1,
     initial_num_filters=64,
-    num_blocks=3,
+    num_blocks=4,
     norm="instance",
     act="leaky",
     kernel_size=4,
@@ -97,7 +101,7 @@ source_discriminator.apply(init_weights)
 target_discriminator = Discriminator(
     in_channels=1,
     initial_num_filters=64,
-    num_blocks=3,
+    num_blocks=4,
     norm="instance",
     act="leaky",
     kernel_size=4,
