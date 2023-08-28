@@ -1,4 +1,4 @@
-## Implements CycleGAN using Pytorch Lightning ##
+## CycleGAN using Pytorch Lightning ##
 
 This codebase is highly inspired from Hadrien's awesome implementation of [CycleGAN](https://github.com/HReynaud/CycleGan_PL/tree/main) using Pytorch Lightning.
 
