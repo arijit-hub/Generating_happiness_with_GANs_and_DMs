@@ -42,8 +42,8 @@ val_transform = transforms.Compose(
 #     batch_size=1
 # )
 enhance_data = EnhanceDataModule(
-    csv_path = '/home/atuin/b143dc/b143dc16/us_enhance/cyclegan_baseline/assets/images.csv',
-    root_img_path='/home/atuin/b143dc/b143dc16/us_enhance/cyclegan_baseline/assets',
+    csv_path = 'assets/images.csv',
+    root_img_path='assets',
     img_type="all",
     batch_size=1
 )
