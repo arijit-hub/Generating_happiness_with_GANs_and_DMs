@@ -245,7 +245,7 @@ class Discriminator(nn.Module):
         filters = [initial_num_filters * (2**i) for i in range(num_blocks)]
         filters.insert(0, in_channels)  # adding the input channel
 
-        ## Convolutional blocks ##
+        # ## Convolutional blocks ##
 
         self.discriminator_net = nn.ModuleList(
             [
@@ -255,8 +255,8 @@ class Discriminator(nn.Module):
                     norm=norm,
                     act=act,
                     kernel_size=kernel_size,
-                    stride=stride,
-                    padding=1 if i > 0 else 0,
+                    stride=stride if i < (len(filters) - 2) else 1,
+                    padding=1,
                     add_norm=True
                     if i > 0
                     else False,  # sets no norm for first conv layer
@@ -265,7 +265,7 @@ class Discriminator(nn.Module):
             ]
         )
 
-        ## Final output mapper ##
+        # ## Final output mapper ##
         self.output_layer = nn.Conv2d(
             in_channels=filters[-1],
             out_channels=1,
@@ -329,7 +329,10 @@ class UNet(nn.Module):
         self.conv1_3 = VGGBlock(nb_filter[1]+nb_filter[2], nb_filter[1], nb_filter[1])
         self.conv0_4 = VGGBlock(nb_filter[0]+nb_filter[1], nb_filter[0], nb_filter[0])
 
-        self.final = nn.Conv2d(nb_filter[0], output_channels, kernel_size=1)
+        self.final = nn.Sequential(
+            nn.Conv2d(nb_filter[0], output_channels, kernel_size=1),
+            nn.Tanh()
+        )
 
 
     def forward(self, x):
@@ -378,7 +381,7 @@ class NestedUNet(nn.Module):
         nb_filter = [64, 128, 256, 512, 1024]
 
         self.pool = nn.MaxPool2d(2, 2)
-        self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
+        self.up = nn.Upsample(scale_factor=2, mode='bicubic', align_corners=False)
 
         self.conv0_0 = VGGBlock(input_channels, nb_filter[0], nb_filter[0])
         self.conv1_0 = VGGBlock(nb_filter[0], nb_filter[1], nb_filter[1])
@@ -438,3 +441,18 @@ class NestedUNet(nn.Module):
         output = self.final(x0_4)
         return output
         
+# if __name__ == "__main__":
+#     random_inp = torch.randn(1,1,256,256)
+#     random_discriminator = Discriminator(in_channels=1,
+#     initial_num_filters=64,
+#     num_blocks=4,
+#     norm="instance",
+#     act="leaky",
+#     kernel_size=4,
+#     stride=2,
+#     )
+
+#     out = random_discriminator(random_inp)
+#     print(out.shape)
+
+#     print(random_discriminator)
