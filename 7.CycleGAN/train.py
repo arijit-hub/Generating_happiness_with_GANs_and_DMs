@@ -1,5 +1,5 @@
 import torch
-from data.data import Horse2ZebraDataModule, EnhanceDataModule
+from data.data import EnhanceDataModule
 from models.model import CycleGAN
 from models.networks import Generator, Discriminator, UNet, NestedUNet
 # from utils.image_history import ImageHistory
@@ -37,13 +37,9 @@ val_transform = transforms.Compose(
 )
 
 ## Setting the dataloading ##
-# horse_data = Horse2ZebraDataModule(
-#     root_path = 'assets/horse2zebra',
-#     batch_size=1
-# )
 enhance_data = EnhanceDataModule(
-    csv_path = '/home/atuin/b143dc/b143dc16/us_enhance/cyclegan_baseline/assets/images.csv',
-    root_img_path='/home/atuin/b143dc/b143dc16/us_enhance/cyclegan_baseline/assets',
+    csv_path = 'assets/images.csv',
+    root_img_path='assets',
     img_type="all",
     batch_size=1
 )
