@@ -156,7 +156,7 @@ def train(num_epochs):
             fake_images = fake_images * 0.5 + 0.5
             save_image(
                 resize(fake_images, (256, 256)),
-                f"{log_dir}/images/fake_images-{epoch+1}.png",
+                f"{log_dir}/images/fake_images-{epoch+1:02d}.png",
                 normalize=True,
                 nrow=4,
             )

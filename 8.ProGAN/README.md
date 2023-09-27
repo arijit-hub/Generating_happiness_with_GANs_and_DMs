@@ -39,7 +39,13 @@ To use it for a new dataset, please change the `data.py` file and make correct i
 
 ### Results ###
 
-To be uploaded...
+Generated images after 40 epochs.
+
+![epoch-40-image](results/fake_images-39.png)
+
+All generated images from a fixed noise from *epoch 0* to *epoch 40*.
+
+![all-gen-imgs](results/results.gif)
 
 ### Remarks ###
 
